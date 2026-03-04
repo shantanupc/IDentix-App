@@ -14,14 +14,14 @@ class VerifierScanScreen extends StatefulWidget {
   final String verifierId;
   final String name;
   final UseCase useCase;
-  final VerificationCategory category;
+  final List<VerificationCategory> categories;
 
   const VerifierScanScreen({
     Key? key,
     required this.verifierId,
     required this.name,
     required this.useCase,
-    required this.category,
+    required this.categories,
   }) : super(key: key);
 
   @override
@@ -107,7 +107,7 @@ class _VerifierScanScreenState extends State<VerifierScanScreen>
           builder: (_) => VerificationResultScreenNew(
             verificationResult: result,
             useCase: widget.useCase,
-            category: widget.category,
+            categories: widget.categories,
             onScanAgain: () {
               // This won't be called directly, we handle via pop
             },
@@ -205,7 +205,9 @@ class _VerifierScanScreenState extends State<VerifierScanScreen>
                     borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                   ),
                   child: Icon(
-                    widget.category.icon,
+                    widget.categories.length == 1
+                        ? widget.categories.first.icon
+                        : Icons.checklist,
                     color: Colors.white,
                     size: 20,
                   ),
@@ -216,7 +218,9 @@ class _VerifierScanScreenState extends State<VerifierScanScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.category.displayName,
+                        widget.categories.length == 1
+                            ? widget.categories.first.displayName
+                            : '${widget.categories.length} Categories Selected',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,

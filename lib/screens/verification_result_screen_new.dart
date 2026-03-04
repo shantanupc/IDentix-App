@@ -8,14 +8,14 @@ import '../widgets/verification_result_widget.dart';
 class VerificationResultScreenNew extends StatelessWidget {
   final Map<String, dynamic> verificationResult;
   final UseCase useCase;
-  final VerificationCategory category;
+  final List<VerificationCategory> categories;
   final VoidCallback onScanAgain;
 
   const VerificationResultScreenNew({
     Key? key,
     required this.verificationResult,
     required this.useCase,
-    required this.category,
+    required this.categories,
     required this.onScanAgain,
   }) : super(key: key);
 
@@ -69,7 +69,7 @@ class VerificationResultScreenNew extends StatelessWidget {
                 ),
                 child: VerificationResultWidget(
                   isSuccess: verified,
-                  category: category,
+                  categories: categories,
                   useCase: useCase,
                   reason: reason,
                   details: data,
@@ -130,9 +130,11 @@ class VerificationResultScreenNew extends StatelessWidget {
           const SizedBox(height: AppTheme.spacingSm),
           _buildContextRow(
             context,
-            'Category',
-            category.displayName,
-            category.icon,
+            'Categories',
+            categories.length == 1
+                ? categories.first.displayName
+                : '${categories.length} selected',
+            categories.length == 1 ? categories.first.icon : Icons.checklist,
           ),
         ],
       ),

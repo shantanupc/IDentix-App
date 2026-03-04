@@ -25,7 +25,7 @@ class VerifierCategoryScreen extends StatefulWidget {
 }
 
 class _VerifierCategoryScreenState extends State<VerifierCategoryScreen> {
-  VerificationCategory? _selectedCategory;
+  final Set<VerificationCategory> _selectedCategories = {};
 
   Future<void> _handleLogout() async {
     final prefs = await SharedPreferences.getInstance();
@@ -147,7 +147,7 @@ class _VerifierCategoryScreenState extends State<VerifierCategoryScreen> {
               ),
               const SizedBox(height: AppTheme.spacingSm),
               Text(
-                'What information do you need to verify?',
+                'Select one or more verification categories',
                 style: TextStyle(
                   fontSize: 14,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -162,12 +162,17 @@ class _VerifierCategoryScreenState extends State<VerifierCategoryScreen> {
                       const SizedBox(height: AppTheme.spacingSm),
                   itemBuilder: (context, index) {
                     final category = categories[index];
+                    final isSelected = _selectedCategories.contains(category);
                     return VerificationCategoryCard(
                       category: category,
-                      isSelected: _selectedCategory == category,
+                      isSelected: isSelected,
                       onTap: () {
                         setState(() {
-                          _selectedCategory = category;
+                          if (isSelected) {
+                            _selectedCategories.remove(category);
+                          } else {
+                            _selectedCategories.add(category);
+                          }
                         });
                       },
                     );
@@ -179,9 +184,11 @@ class _VerifierCategoryScreenState extends State<VerifierCategoryScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: _selectedCategory != null ? _proceedToScan : null,
+                  onPressed: _selectedCategories.isNotEmpty ? _proceedToScan : null,
                   icon: const Icon(Icons.qr_code_scanner),
-                  label: const Text('Continue to Scan'),
+                  label: Text(_selectedCategories.isEmpty
+                      ? 'Select Categories'
+                      : 'Continue to Scan (${_selectedCategories.length})'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                       vertical: AppTheme.spacingMd,
@@ -197,7 +204,7 @@ class _VerifierCategoryScreenState extends State<VerifierCategoryScreen> {
   }
 
   void _proceedToScan() {
-    if (_selectedCategory == null) return;
+    if (_selectedCategories.isEmpty) return;
 
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -205,7 +212,7 @@ class _VerifierCategoryScreenState extends State<VerifierCategoryScreen> {
           verifierId: widget.verifierId,
           name: widget.name,
           useCase: widget.useCase,
-          category: _selectedCategory!,
+          categories: _selectedCategories.toList(),
         ),
       ),
     );

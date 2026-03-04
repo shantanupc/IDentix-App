@@ -4,7 +4,7 @@ import '../models/verification_category.dart';
 
 class VerificationResultWidget extends StatelessWidget {
   final bool isSuccess;
-  final VerificationCategory? category;
+  final List<VerificationCategory>? categories;
   final UseCase? useCase;
   final String? reason;
   final Map<String, dynamic>? details;
@@ -13,7 +13,7 @@ class VerificationResultWidget extends StatelessWidget {
   const VerificationResultWidget({
     Key? key,
     required this.isSuccess,
-    this.category,
+    this.categories,
     this.useCase,
     this.reason,
     this.details,
@@ -33,13 +33,56 @@ class VerificationResultWidget extends StatelessWidget {
       return reason ?? 'Verification could not be completed';
     }
 
-    // Build detailed success message based on category and actual values
+    // Build detailed success message based on categories and actual values
     final userData = details?['userData'] as Map<String, dynamic>?;
     final age = userData?['age'] ?? details?['age'];
     final branch = userData?['branch'] ?? details?['branch'];
     final year = userData?['year'] ?? details?['year'];
     final name = userData?['name'] ?? details?['userName'] ?? details?['name'];
+    final session = userData?['session'] ?? details?['session'];
 
+    // Handle multiple categories
+    if (categories != null && categories!.length > 1) {
+      final List<String> verifiedInfo = [];
+      
+      for (final category in categories!) {
+        switch (category) {
+          case VerificationCategory.ageVerification:
+            if (age != null) {
+              verifiedInfo.add('Age: $age years (above 18)');
+            }
+            break;
+          case VerificationCategory.branchVerification:
+            if (branch != null) {
+              verifiedInfo.add('Branch: $branch');
+            }
+            break;
+          case VerificationCategory.yearVerification:
+            if (year != null) {
+              verifiedInfo.add('Year: $year');
+            }
+            break;
+          case VerificationCategory.fullIdentity:
+            if (name != null) verifiedInfo.add('Name: $name');
+            if (age != null) verifiedInfo.add('Age: $age');
+            if (branch != null) verifiedInfo.add('Branch: $branch');
+            if (year != null) verifiedInfo.add('Year: $year');
+            if (session != null) verifiedInfo.add('Session: $session');
+            break;
+          case VerificationCategory.aadharVerification:
+            verifiedInfo.add('Aadhar verified');
+            break;
+        }
+      }
+
+      if (verifiedInfo.isNotEmpty) {
+        return 'All selected verifications passed:\n${verifiedInfo.join('\n')}';
+      }
+      return 'All selected categories verified successfully.';
+    }
+
+    // Handle single category (backward compatibility)
+    final category = categories?.firstOrNull;
     switch (category) {
       case VerificationCategory.ageVerification:
         if (age != null) {
@@ -65,6 +108,7 @@ class VerificationResultWidget extends StatelessWidget {
         if (age != null) verifiedInfo.add('Age: $age');
         if (branch != null) verifiedInfo.add('Branch: $branch');
         if (year != null) verifiedInfo.add('Year: $year');
+        if (session != null) verifiedInfo.add('Session: $session');
 
         if (verifiedInfo.isNotEmpty) {
           return 'All identity details verified:\n${verifiedInfo.join('\n')}';
@@ -185,8 +229,14 @@ class VerificationResultWidget extends StatelessWidget {
               _buildDetailRow(context, 'User ID', userId),
               const SizedBox(height: AppTheme.spacingSm),
             ],
-            if (category != null) ...[
-              _buildDetailRow(context, 'Category', category!.displayName),
+            if (categories != null && categories!.isNotEmpty) ...[
+              _buildDetailRow(
+                context,
+                'Categories',
+                categories!.length == 1
+                    ? categories!.first.displayName
+                    : '${categories!.length} selected',
+              ),
               const SizedBox(height: AppTheme.spacingSm),
             ],
             if (timeRemaining != null) ...[

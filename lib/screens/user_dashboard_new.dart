@@ -11,6 +11,7 @@ import '../models/qr_data.dart';
 import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
 import '../services/api_service.dart';
+import '../services/biometric_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/hash_util.dart';
 import '../widgets/identity_card_widget.dart';
@@ -41,6 +42,7 @@ class _UserDashboardNewState extends State<UserDashboardNew>
   int _qrGeneration = 0;
   bool _showTechnicalDetails = false;
   int _timeRemaining = qrRefreshSeconds;
+  bool _showQRSection = false; // New flag to control QR section visibility
 
   late AnimationController _fadeController;
   Timer? _countdownTimer;
@@ -112,8 +114,8 @@ class _UserDashboardNewState extends State<UserDashboardNew>
           _isLoading = false;
         });
         if (_originalHash != null && _originalHash!.isNotEmpty) {
-          _generateQR();
-          _resetQRTimer();
+          // Don't auto-generate QR, wait for biometric auth
+          _showQRSection = false;
         }
       } else {
         setState(() {
@@ -127,6 +129,15 @@ class _UserDashboardNewState extends State<UserDashboardNew>
         _isLoading = false;
       });
     }
+  }
+
+  /// Show QR directly without authentication
+  void _showQRDirectly() {
+    setState(() {
+      _showQRSection = true;
+    });
+    _generateQR();
+    _resetQRTimer();
   }
 
   void _generateQR() {
@@ -328,11 +339,8 @@ class _UserDashboardNewState extends State<UserDashboardNew>
                   isVerified: userProvider.isVerifiedOnBlockchain,
                 ),
                 const SizedBox(height: AppTheme.spacingLg),
-                // QR Code Section
+                // QR Code Section (no authentication)
                 _buildQRCodeSection(),
-                const SizedBox(height: AppTheme.spacingLg),
-                // Blockchain Info Section
-                _buildBlockchainInfoSection(userProvider),
                 const SizedBox(height: AppTheme.spacingLg),
                 // Technical Details (Expandable)
                 _buildTechnicalDetailsSection(),
@@ -403,8 +411,22 @@ class _UserDashboardNewState extends State<UserDashboardNew>
             ],
           ),
           const SizedBox(height: AppTheme.spacingLg),
-          // QR Code with Countdown
-          if (_qrData != null)
+          // QR Code (no authentication required)
+          if (!_showQRSection)
+            // Show "Tap to Generate QR" button
+            ElevatedButton.icon(
+              onPressed: _showQRDirectly,
+              icon: const Icon(Icons.qr_code),
+              label: const Text('Tap to Generate QR'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.spacingLg,
+                  vertical: AppTheme.spacingMd,
+                ),
+              ),
+            )
+          else if (_qrData != null)
+            // Show QR Code
             FadeTransition(
               opacity: _fadeController,
               child: Column(
@@ -446,151 +468,6 @@ class _UserDashboardNewState extends State<UserDashboardNew>
             ),
         ],
       ),
-    );
-  }
-
-  Widget _buildBlockchainInfoSection(UserProvider userProvider) {
-    final bool hasBlockchainData = _originalHash != null && _originalHash!.isNotEmpty;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppTheme.spacingLg),
-      decoration: BoxDecoration(
-        color: hasBlockchainData
-            ? AppTheme.success.withOpacity(0.05)
-            : AppTheme.error.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(
-          color: hasBlockchainData
-              ? AppTheme.success.withOpacity(0.2)
-              : AppTheme.error.withOpacity(0.2),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.link,
-                color: hasBlockchainData ? AppTheme.success : AppTheme.error,
-                size: 20,
-              ),
-              const SizedBox(width: AppTheme.spacingSm),
-              Text(
-                'Blockchain Record',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppTheme.spacingMd),
-          if (hasBlockchainData) ...[
-            // Blockchain Hash with copy
-            Row(
-              children: [
-                Expanded(
-                  child: _buildBlockchainDetail(
-                    'Blockchain Hash',
-                    _truncateHash(_originalHash!),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.copy, size: 18),
-                  onPressed: () => _copyToClipboard(_originalHash!),
-                  tooltip: 'Copy hash',
-                ),
-              ],
-            ),
-            const SizedBox(height: AppTheme.spacingSm),
-            _buildBlockchainDetail(
-              'Status',
-              'Verified on Blockchain',
-              valueColor: AppTheme.success,
-            ),
-            if (userProvider.transactionHash != null) ...[
-              const SizedBox(height: AppTheme.spacingSm),
-              _buildBlockchainDetail(
-                'Transaction Hash',
-                _truncateHash(userProvider.transactionHash!),
-              ),
-            ],
-            if (userProvider.blockNumber != null) ...[
-              const SizedBox(height: AppTheme.spacingSm),
-              _buildBlockchainDetail(
-                'Block Number',
-                userProvider.blockNumber!,
-              ),
-            ],
-            const SizedBox(height: AppTheme.spacingMd),
-            if (userProvider.transactionHash != null)
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _openEtherscan,
-                  icon: const Icon(Icons.open_in_new, size: 16),
-                  label: const Text('View on Etherscan'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.success,
-                    side: BorderSide(color: AppTheme.success.withOpacity(0.5)),
-                  ),
-                ),
-              ),
-          ] else ...[
-            Row(
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  color: AppTheme.error,
-                  size: 18,
-                ),
-                const SizedBox(width: AppTheme.spacingSm),
-                Expanded(
-                  child: Text(
-                    'Not registered on blockchain',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBlockchainDetail(String label, String value, {Color? valueColor}) {
-    return Row(
-      children: [
-        Expanded(
-          flex: 2,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-        Expanded(
-          flex: 3,
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'monospace',
-              color: valueColor ?? Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -645,8 +522,6 @@ class _UserDashboardNewState extends State<UserDashboardNew>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Divider(),
-                const SizedBox(height: AppTheme.spacingSm),
-                _buildTechDetail('Original Hash', _truncateHash(_originalHash ?? 'N/A')),
                 const SizedBox(height: AppTheme.spacingSm),
                 _buildTechDetail(
                   'Dynamic Hash',
@@ -711,5 +586,51 @@ class _UserDashboardNewState extends State<UserDashboardNew>
   String _truncateHash(String hash) {
     if (hash.length <= 20) return hash;
     return '${hash.substring(0, 10)}...${hash.substring(hash.length - 10)}';
+  }
+}
+
+class IdentityStatusBadge extends StatelessWidget {
+  final bool isVerified;
+
+  const IdentityStatusBadge({Key? key, required this.isVerified}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.spacingMd,
+        vertical: AppTheme.spacingSm,
+      ),
+      decoration: BoxDecoration(
+        color: isVerified
+            ? AppTheme.success.withOpacity(0.1)
+            : AppTheme.error.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(
+          color: isVerified
+              ? AppTheme.success.withOpacity(0.3)
+              : AppTheme.error.withOpacity(0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isVerified ? Icons.verified : Icons.warning_amber,
+            color: isVerified ? AppTheme.success : AppTheme.error,
+            size: 16,
+          ),
+          const SizedBox(width: AppTheme.spacingSm),
+          Text(
+            isVerified ? 'Verified on Blockchain' : 'Not Registered',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isVerified ? AppTheme.success : AppTheme.error,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

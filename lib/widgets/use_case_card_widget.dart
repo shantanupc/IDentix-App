@@ -208,12 +208,13 @@ class VerificationCategoryCard extends StatelessWidget {
                   ],
                 ),
               ),
-              // Selection indicator
-              Container(
+              // Selection indicator (checkbox style)
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
                 width: 24,
                 height: 24,
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(6),
                   color: isSelected
                       ? Theme.of(context).colorScheme.primary
                       : Colors.transparent,
